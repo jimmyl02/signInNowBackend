@@ -228,8 +228,62 @@ app.post("/api/getsignins", (req, res) => {
     }
 });
 
-//TODO Find sign in sheets by JWT
+/**
+ * Route to get sign in sheets owned by jwt
+ *
+ * @param jwt - The JWT of the person attempting to accewss data
+ */
+app.post("/api/getsheets", (req, res) => {
+    const body = req.body;
+    if(body.hasOwnProperty("jwt")){
+        jwt.verify(body.jwt, process.env.JWT_SECRET, (err, decoded) => {
+            if(err) return res.status(500).send("Failed to authenticate");
+ 
+            signinsheets.find(
+                {"ownerUsername": decoded.id},
+                (errFind, docs) => {
+                    if(errFind) return res.status(405).send({"error": err});
+                    
+                    return res.status(200).send(docs);
+                }
+            );
+        });
+    }else{
+        return res.status(400).send("Incorrrect parameters");
+    }
+});
+
 //TODO Button which randomly updates sheetid (NOT sheetuuid)
+/**
+ * Route to update the sheetid of a sheetuuid
+ *
+ * @param sheetuuid - The uuid of the sheet (given only to the owner)
+ * @param jwt - The JWT of the person attempting to accewss data
+ */
+app.post("/api/updatecode", (req, res) => {
+    const body = req.body;
+    if(body.hasOwnProperty("sheetuuid") && body.hasOwnProperty("jwt")){
+        jwt.verify(body.jwt, process.env.JWT_SECRET, (err, decoded) => {
+            if(err) return res.status(500).send("Failed to authenticate");
+ 
+            const randomID = randomstring.generate(7);
+
+            signinsheets.findOneAndUpdate(
+                {"ownerUsername": decoded.id,
+                    "UUID": body.sheetuuid},
+                {"sheetID": randomID},
+                {"upsert": false},
+                (errFind, docs) => {
+                    if(errFind) return res.status(405).send({"error": err});
+                    
+                    return res.status(200).send({"updatedCode": randomID});
+                }
+            );
+        });
+    }else{
+        return res.status(400).send("Incorrrect parameters");
+    }
+});
 
 const port = process.env.PORT || 8080;
 
