@@ -19,9 +19,9 @@ const uuidv4 = require("uuid/v4");
 const usersModule = require("./models/users.js");
 const usersSchema = usersModule.usersSchema;
 const signinsModule = require("./models/users.js");
-const signinsSchema = signinsModule.signinsModule;
+const signinsSchema = signinsModule.signinsSchema;
 const signinsheetsModule = require("./models/users.js");
-const signinsheetsSchema = signinsheetsModule.signinsheetsModule;
+const signinsheetsSchema = signinsheetsModule.signinsheetsSchema;
 
 //Load definitions
 dotenv.config();
@@ -91,5 +91,65 @@ app.post("/api/register", (req, res) => {
                 }
             }
         );
+    }else{
+        return res.status(400).send("Incorrrect parameters");
     }
 });
+
+/**
+ * Route to login to an account
+ * 
+ * @param username - The username of the user
+ * @param password - The password to assign the user
+ */
+app.post("/api/login", (req, res) => {
+    const body = req.body;
+    if(body.hasOwnProperty("username") && body.hasOwnProperty("password")){
+        users.findOne({"username": body.username}, (err, doc) => {
+            if(err) return res.status(500).send("Internal server error");
+            if(!doc) return res.status(404).send("Username was not found");
+
+            const passwordIsValid = bcrypt.compareSync(body.password, doc.password);
+            if(!passwordIsValid) return res.status(401).send({"auth": false,
+                "token": null});
+
+            const token = jwt.sign({"id": body.username}, process.env.JWT_SECRET, {
+                "expiresIn": 86400
+            });
+
+            return res.status(200).send({"auth": true,
+                "token": token});
+        });
+    }else{
+        return res.status(400).send("Incorrrect parameters");
+    }
+});
+
+/**
+ * Route to add to sign in sheet
+ *
+ * @param sheetid - The ID of the sign in sheet
+ * @param name - The name of the student
+ */
+ 
+app.post("/api/signin", (req,res) =>{
+    const body = req.body;
+    if(body.hasOwnProperty("sheetid") && body.hasOwnProperty("name")){
+        signinsheets.find(
+            {"uuid": body.sheetid},
+            (err, docs) => {
+                if(err) return res.status(405).send({"error": err});
+                else{
+                    signins.create(
+                        {"name": body.name},
+                        {"sheetUuid": body.sheetid}, (errCreator, doc) => {
+                            if(err) return res.status(500).send({"error": errCreator});
+                            
+                            return res.status(200).send({"signedin": true});
+                        }
+                    );
+                }
+            }
+        )
+    }
+ });

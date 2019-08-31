@@ -9,7 +9,7 @@ module.exports = {
      * @param ownerUsername - A string which stores the name of the owner
      * @param uuid - A string which stores the unique id of the sheet
      */
-    "users": mongoose.Schema(
+    "signinsheetsSchema": mongoose.Schema(
         {
             "name": String,
             "ownerUsername": String,

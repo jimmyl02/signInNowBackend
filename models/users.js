@@ -9,7 +9,7 @@ module.exports = {
      * @param email - A string which stores the user's email
      * @param password - A string which stores the hashed password of the user
      */
-    "users": mongoose.Schema(
+    "usersSchema": mongoose.Schema(
         {
             "username": String,
             "email": String,
