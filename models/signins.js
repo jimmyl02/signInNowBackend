@@ -11,7 +11,7 @@ module.exports = {
     "signinsSchema": mongoose.Schema(
         {
             "name": String,
-            "sheetUuid": String
+            "sheetUUID": String
         },
         {
             "timestamps": {"createdAt": "startTime", 

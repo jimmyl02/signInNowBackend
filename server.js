@@ -14,13 +14,14 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const dotenv = require("dotenv");
 const randomstring = require("randomstring");
+const uuidv4 = require("uuid/v4");
 
 //Load schemas and modules
 const usersModule = require("./models/users.js");
 const usersSchema = usersModule.usersSchema;
-const signinsModule = require("./models/users.js");
+const signinsModule = require("./models/signins.js");
 const signinsSchema = signinsModule.signinsSchema;
-const signinsheetsModule = require("./models/users.js");
+const signinsheetsModule = require("./models/signinsheets.js");
 const signinsheetsSchema = signinsheetsModule.signinsheetsSchema;
 
 //Load definitions
@@ -53,8 +54,8 @@ mongooseCon.once("open", () => {
  * Define mongo collections
  */
 const users = mongoose.model("users", usersSchema);
-const signins = mongoose.model("users", signinsSchema);
-const signinsheets = mongoose.model("users", signinsheetsSchema);
+const signins = mongoose.model("signins", signinsSchema);
+const signinsheets = mongoose.model("signinsheets", signinsheetsSchema);
 
 //Routes
 /**
@@ -136,15 +137,15 @@ app.post("/api/signin", (req, res) => {
     const body = req.body;
     if(body.hasOwnProperty("sheetid") && body.hasOwnProperty("name")){
         signinsheets.findOne(
-            {"uuid": body.sheetid},
+            {"sheetID": body.sheetid},
             (err, doc) => {
                 if(err) return res.status(500).send("Internal server error");
-                console.log(doc);
                 if(!doc) return res.status(404).send("SheetID was not found");
 
                 signins.create(
-                    {"name": body.name},
-                    {"sheetUuid": body.sheetid}, (errCreate, docCreate) => {
+                    {"name": body.name,
+                        "sheetUUID": doc.UUID}, 
+                    (errCreate, docCreate) => {
                         if(err) return res.status(500).send({"error": errCreate});
 
                         return res.status(200).send({"signedin": true});
@@ -155,6 +156,80 @@ app.post("/api/signin", (req, res) => {
         );
     }
 });
+
+/**
+ * Route to add to sign in sheet
+ *
+ * @param sheetname - The name of the new sheet
+ * @param jwt - The JWT of the person attempting to accewss data
+ */
+
+app.post("/api/createsheet", (req, res) => {
+    const body = req.body;
+    if(body.hasOwnProperty("sheetname") && body.hasOwnProperty("jwt")){
+        jwt.verify(body.jwt, process.env.JWT_SECRET, (err, decoded) => {
+            if(err) return res.status(500).send("Failed to authenticate");
+ 
+            //User has been authorized
+            const randomUUID = uuidv4();
+            const randomID = randomstring.generate(7);
+            signinsheets.create(
+                {"name": body.sheetname,
+                    "ownerUsername": decoded.id,
+                    "UUID": randomUUID,
+                    "sheetID": randomID},
+                (errCreator, doc) => {
+                    if(err) return res.status(500).send({"error": errCreator});
+
+                    return res.status(200).send({"sheetid": randomID});
+                }
+            );
+        });
+    }else{
+        return res.status(400).send("Incorrrect parameters");
+    }
+});
+
+/**
+ * Route to add to sign in sheet
+ *
+ * @param sheetuuid - The uuid of the sheet (given only to the owner)
+ * @param jwt - The JWT of the person attempting to accewss data
+ */
+
+app.post("/api/getsignins", (req, res) => {
+    const body = req.body;
+    if(body.hasOwnProperty("sheetuuid") && body.hasOwnProperty("jwt")){
+        jwt.verify(body.jwt, process.env.JWT_SECRET, (err, decoded) => {
+            if(err) return res.status(500).send("Failed to authenticate");
+ 
+            signinsheets.find(
+                {"ownerUsername": decoded.id,
+                    "UUID": body.sheetuuid},
+                (errFind, docs) => {
+                    if(errFind) return res.status(405).send({"error": err});
+                    if(docs.length > 0){
+                        //There exists a signinsheet with given UUID and Owner (from JWT)
+                        signins.find(
+                            {"sheetUUID": body.sheetuuid},
+                            (errFindSignins, docsSignins) => {
+                                if(errFindSignins) return res.status(405).send({"error": err});
+            
+                                return res.status(200).send(docsSignins);
+             
+                            }
+                        );
+                    }
+                }
+            );
+        });
+    }else{
+        return res.status(400).send("Incorrrect parameters");
+    }
+});
+
+//TODO Find sign in sheets by JWT
+//TODO Button which randomly updates sheetid (NOT sheetuuid)
 
 const port = process.env.PORT || 8080;
 
