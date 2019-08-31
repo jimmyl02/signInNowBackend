@@ -13,7 +13,7 @@ const mongoose = require("mongoose");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const dotenv = require("dotenv");
-const uuidv4 = require("uuid/v4");
+const randomstring = require("randomstring");
 
 //Load schemas and modules
 const usersModule = require("./models/users.js");
@@ -73,11 +73,11 @@ app.post("/api/register", (req, res) => {
             (err, docs) => {
                 if(err) return res.status(500).send({"error": err});
                 if(docs.length){
-                    return res.status(405).send({"error": "Report with same name already exists"});
+                    return res.status(405).send({"error": "User with same name already exists"});
                 }else{
                     //Create the new user
                     users.create({"username": body.username,
-                        "email": body.password,
+                        "email": body.email,
                         "password": hashedPassword}, (errCreate, doc) => {
                         if(err) return res.status(500).send({"error": errCreate});
                             
@@ -132,24 +132,32 @@ app.post("/api/login", (req, res) => {
  * @param name - The name of the student
  */
  
-app.post("/api/signin", (req,res) =>{
+app.post("/api/signin", (req, res) => {
     const body = req.body;
     if(body.hasOwnProperty("sheetid") && body.hasOwnProperty("name")){
-        signinsheets.find(
+        signinsheets.findOne(
             {"uuid": body.sheetid},
-            (err, docs) => {
-                if(err) return res.status(405).send({"error": err});
-                else{
-                    signins.create(
-                        {"name": body.name},
-                        {"sheetUuid": body.sheetid}, (errCreator, doc) => {
-                            if(err) return res.status(500).send({"error": errCreator});
-                            
-                            return res.status(200).send({"signedin": true});
-                        }
-                    );
-                }
+            (err, doc) => {
+                if(err) return res.status(500).send("Internal server error");
+                console.log(doc);
+                if(!doc) return res.status(404).send("SheetID was not found");
+
+                signins.create(
+                    {"name": body.name},
+                    {"sheetUuid": body.sheetid}, (errCreate, docCreate) => {
+                        if(err) return res.status(500).send({"error": errCreate});
+
+                        return res.status(200).send({"signedin": true});
+                    }
+                );
+
             }
-        )
+        );
     }
- });
+});
+
+const port = process.env.PORT || 8080;
+
+app.listen(port, () => {
+    console.log("Example app listening on port " + port + "!");
+});
