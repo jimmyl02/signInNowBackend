@@ -273,10 +273,14 @@ app.post("/api/updatecode", (req, res) => {
                     "UUID": body.sheetuuid},
                 {"sheetID": randomID},
                 {"upsert": false},
-                (errFind, docs) => {
+                (errFind, doc) => {
                     if(errFind) return res.status(405).send({"error": err});
                     
-                    return res.status(200).send({"updatedCode": randomID});
+                    if(doc){
+                        return res.status(200).send({"updatedCode": randomID});
+                    }else{
+                        return res.status(404).send("Sheet was not found");
+                    }
                 }
             );
         });
