@@ -253,7 +253,6 @@ app.post("/api/getsheets", (req, res) => {
     }
 });
 
-//TODO Button which randomly updates sheetid (NOT sheetuuid)
 /**
  * Route to update the sheetid of a sheetuuid
  *
