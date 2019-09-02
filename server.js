@@ -181,7 +181,7 @@ app.post("/api/createsheet", (req, res) => {
                 (errCreator, doc) => {
                     if(err) return res.status(500).send({"error": errCreator});
 
-                    return res.status(200).send({"sheetid": randomID});
+                    return res.status(200).send({"sheetuuid": randomUUID});
                 }
             );
         });
@@ -219,7 +219,9 @@ app.post("/api/getsignins", (req, res) => {
              
                             }
                         );
-                    }
+                    }else{
+		    	return res.status(404).send({"error": "Seet not found"})
+		    }
                 }
             );
         });
@@ -245,6 +247,32 @@ app.post("/api/getsheets", (req, res) => {
                     if(errFind) return res.status(405).send({"error": err});
                     
                     return res.status(200).send(docs);
+                }
+            );
+        });
+    }else{
+        return res.status(400).send("Incorrrect parameters");
+    }
+});
+
+/**
+ * Route to get information of a specific sheet using UUID
+ *
+ * @param jwt - The JWT of the person attempting to accewss data
+ * @param sheetuuid - The UUID of the sheet to get info
+ */
+app.post("/api/getsheetinfo", (req, res) => {
+    const body = req.body;
+    if(body.hasOwnProperty("jwt") && body.hasOwnProperty("sheetuuid")){
+        jwt.verify(body.jwt, process.env.JWT_SECRET, (err, decoded) => {
+            if(err) return res.status(500).send("Failed to authenticate");
+ 
+            signinsheets.findOne(
+                {"ownerUsername": decoded.id, "UUID": body.sheetuuid},
+                (errFind, doc) => {
+                    if(errFind) return res.status(405).send({"error": err});
+                    
+                    return res.status(200).send(doc);
                 }
             );
         });
@@ -291,5 +319,5 @@ app.post("/api/updatecode", (req, res) => {
 const port = process.env.PORT || 8080;
 
 app.listen(port, () => {
-    console.log("Example app listening on port " + port + "!");
+    console.log("Sign in now backend server listening on port " + port + "!");
 });
